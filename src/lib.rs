@@ -1,8 +1,10 @@
 pub mod encoding;
+pub mod xor_cypher;
 
 #[cfg(test)]
-mod tests {
+mod set_1 {
     use super::encoding::{hex_to_base64, Base64, Hex};
+    use super::xor_cypher::xor_hex;
 
     #[test]
     fn challenge_1() {
@@ -11,4 +13,16 @@ mod tests {
         Ok(Base64(String::from("SSdtIGtpbGxpbmcgeW91ciBicmFpbiBsaWtlIGEgcG9pc29ub3VzIG11c2hyb29t")))
         );
     }
+
+    #[test]
+    fn challenge_2() {
+        assert_eq!(
+            xor_hex(
+                Hex(String::from("1c0111001f010100061a024b53535009181c")),
+                Hex(String::from("686974207468652062756c6c277320657965"))
+            ),
+            Ok(Hex(String::from("746865206b696420646f6e277420706c6179")))
+        );
+    }
+
 }
