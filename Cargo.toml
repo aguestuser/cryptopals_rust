@@ -1,0 +1,9 @@
+[package]
+name = "cryptopals_rust"
+version = "0.1.0"
+authors = ["aguestuser <aguestuser@riseup.net>"]
+edition = "2018"
+
+[dependencies]
+base64 = "0.10.0"
+hex = "0.3.2"
