@@ -1,37 +1,19 @@
 extern crate num;
 
-use num::bigint::{BigUint, ToBigUint};
-use num::pow;
-use num::traits::{ToPrimitive, Zero};
+use num::bigint::{BigUint};
 
 /// encodes a byte array as a base 10 integer
 /// as specified in RFC 8017's OS2IP encoding
 /// see:  https://tools.ietf.org/html/rfc8017#section-4.2
 pub fn encode_os2ip(bs: &[u8]) -> BigUint {
-    bs.iter()
-        .enumerate()
-        .fold(Zero::zero(), |acc, (idx, byte)| {
-            acc + (byte * pow(BigUint::new(vec![256]), bs.len() - (idx + 1)))
-        })
-    // equivalent to: BigUint::from_radix_be(bs, 256).unwrap()
+    BigUint::from_radix_be(bs, 256).unwrap()
 }
 
 /// decodes a byte array from a base 10 integer
 /// as specified in RFC 8017's I2OSP encoding
 /// see: https://tools.ietf.org/html/rfc8017#section-4.1
 pub fn decode_i2osp(int: BigUint) -> Vec<u8> {
-    if Zero::is_zero(&int) {
-        vec![]
-    } else {
-        let (quotient, remainder) = (
-            &int / BigUint::new(vec![256]),
-            &int % BigUint::new(vec![256]),
-        );
-        let mut res = decode_i2osp(quotient);
-        res.push(remainder.to_u8().unwrap());
-        res
-    }
-    // equivalent to: int.to_bytes_be()
+    int.to_bytes_be()
 }
 
 #[cfg(test)]
