@@ -1,21 +1,19 @@
-extern crate num;
+extern crate num_bigint_dig as bigint;
 extern crate primal;
 extern crate rand;
 
-use num::bigint::{BigUint, ToBigUint};
-use num::traits::{ToPrimitive};
-use rand::rngs::OsRng;
-use rand::{RngCore};
+use bigint::{BigUint, RandBigInt};
+use bigint::prime;
+use rand::rngs::{OsRng};
+use rand::{CryptoRng};
 
-fn gen_distinct_primes() -> (BigUint, BigUint){
-    // TODO: investigate using num_bigint_dig to generate random prime w/ N bits:
-    // https://docs.rs/num-bigint-dig/0.4.0/num_bigint_dig
+pub fn gen_distinct_primes(keysize: usize) -> (BigUint, BigUint){
+    let mut rng = OsRng::new().expect("Failed to build RNG");
+    (gen_prime(&mut rng, keysize), gen_prime(&mut rng, keysize))
+}
 
-    let base = OsRng::new().expect("Failed to build OS RNG").next_u64();
-    let p = (base..).skip_while(|n| !primal::is_prime(*n)).next().unwrap();
-    let q = (p..).skip_while(|n| !primal::is_prime(*n)).next().unwrap();
-
-    (p.to_biguint().unwrap(), q.to_biguint().unwrap())
+fn gen_prime<T: CryptoRng + RandBigInt>(mut rng: T, keysize: usize) -> BigUint {
+    prime::next_prime(&rng.gen_biguint(keysize))
 }
 
 /// encodes a byte array as a base 10 integer
@@ -37,13 +35,15 @@ mod tests {
     use super::*;
 
     #[test]
-    fn generating_keypair(){
-        let (p1, q1) = gen_distinct_primes();
-        let (p2, q2) = gen_distinct_primes();
+    fn generating_distinct_primes(){
+        let (p1, q1) = gen_distinct_primes(32);
+        let (p2, q2) = gen_distinct_primes(32);
 
-        vec![&p1,&q1,&p2,&q2].iter().for_each(|n| assert!(primal::is_prime(n.to_u64().unwrap())));
+        vec![&p1,&q1,&p2,&q2].iter().for_each(|n| assert!(prime::probably_prime_lucas(n)));
         assert_ne!(p1, p2);
         assert_ne!(q1, q2);
+        assert_ne!(p1, q1);
+        assert_ne!(p2, q2);
     }
 
     #[test]
