@@ -3,6 +3,7 @@ extern crate lazy_static;
 
 pub mod characters;
 pub mod encoding;
+pub mod rsa;
 pub mod xor_cypher;
 pub mod xor_cypher_attack;
 
