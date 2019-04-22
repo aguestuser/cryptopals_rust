@@ -1,6 +1,22 @@
 extern crate num;
+extern crate primal;
+extern crate rand;
 
-use num::bigint::{BigUint};
+use num::bigint::{BigUint, ToBigUint};
+use num::traits::{ToPrimitive};
+use rand::rngs::OsRng;
+use rand::{RngCore};
+
+fn gen_distinct_primes() -> (BigUint, BigUint){
+    // TODO: investigate using num_bigint_dig to generate random prime w/ N bits:
+    // https://docs.rs/num-bigint-dig/0.4.0/num_bigint_dig
+
+    let base = OsRng::new().expect("Failed to build OS RNG").next_u64();
+    let p = (base..).skip_while(|n| !primal::is_prime(*n)).next().unwrap();
+    let q = (p..).skip_while(|n| !primal::is_prime(*n)).next().unwrap();
+
+    (p.to_biguint().unwrap(), q.to_biguint().unwrap())
+}
 
 /// encodes a byte array as a base 10 integer
 /// as specified in RFC 8017's OS2IP encoding
@@ -18,8 +34,17 @@ pub fn decode_i2osp(int: BigUint) -> Vec<u8> {
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
+
+    #[test]
+    fn generating_keypair(){
+        let (p1, q1) = gen_distinct_primes();
+        let (p2, q2) = gen_distinct_primes();
+
+        vec![&p1,&q1,&p2,&q2].iter().for_each(|n| assert!(primal::is_prime(n.to_u64().unwrap())));
+        assert_ne!(p1, p2);
+        assert_ne!(q1, q2);
+    }
 
     #[test]
     fn encoding_byte_array_as_int() {
