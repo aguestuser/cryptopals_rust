@@ -16,16 +16,16 @@ fn gen_prime<T: CryptoRng + RandBigInt>(mut rng: T, keysize: usize) -> BigUint {
     prime::next_prime(&rng.gen_biguint(keysize))
 }
 
-/// encodes a byte array as a base 10 integer
-/// as specified in RFC 8017's OS2IP encoding
-/// see:  https://tools.ietf.org/html/rfc8017#section-4.2
+/// encodes a byte array as an integer
+/// as specified in RFC 8017's OS2IP encoding:
+/// https://tools.ietf.org/html/rfc8017#section-4.2
 pub fn encode_os2ip(bs: &[u8]) -> BigUint {
     BigUint::from_radix_be(bs, 256).unwrap()
 }
 
-/// decodes a byte array from a base 10 integer
-/// as specified in RFC 8017's I2OSP encoding
-/// see: https://tools.ietf.org/html/rfc8017#section-4.1
+/// decodes a byte array from an integer
+/// as specified in RFC 8017's I2OSP encoding:
+/// https://tools.ietf.org/html/rfc8017#section-4.1
 pub fn decode_i2osp(int: BigUint) -> Vec<u8> {
     int.to_bytes_be()
 }
