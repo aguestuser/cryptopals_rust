@@ -116,7 +116,7 @@ mod tests {
 
     #[test]
     fn test_score() {
-        assert_eq!(score(&GOOD_CANDIDATE), 0.016118592)
+        assert!((score(&GOOD_CANDIDATE) - 0.016118592).abs() < 0.000000001)
     }
 
     #[test]
@@ -128,7 +128,7 @@ mod tests {
 
     #[test]
     fn test_sum_frequency_products() {
-        assert_eq!(sum_frequency_products(&GOOD_CANDIDATE), 0.052664608);
+        assert!((sum_frequency_products(&GOOD_CANDIDATE) - 0.052664608).abs() < 0.000000001);
     }
 
     #[test]
