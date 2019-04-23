@@ -14,24 +14,14 @@ pub struct PublicKey {
     pub n:    BigUint,
 }
 
-pub struct PrivateKey {
+pub struct SecretKey {
     pub d:    BigUint,
     pub n:    BigUint,
     lambda_n: BigUint,
 }
 
-pub fn gen_keypair(keysize: usize) -> (PublicKey, PrivateKey) {
-    let (p,q) = gen_distinct_primes(keysize);
-    let lambda_n = lcm(&p - BigUint::one(), &q - BigUint::one());
-    let e = gen_coprime(&lambda_n);
-    let d = mod_inverse(&e, &lambda_n).unwrap();
-    (
-        PublicKey { n: &p * &q, e },
-        PrivateKey { n: &p * &q, d, lambda_n }
-    )
-}
 
-pub fn gen_distinct_primes(keysize: usize) -> (BigUint, BigUint){
+fn gen_distinct_primes(keysize: usize) -> (BigUint, BigUint){
     let mut rng = OsRng::new().expect("Failed to build RNG");
     (gen_prime(&mut rng, keysize), gen_prime(&mut rng, keysize))
 }
@@ -40,7 +30,7 @@ fn gen_prime<T: CryptoRng + RandBigInt>(mut rng: T, keysize: usize) -> BigUint {
     prime::next_prime(&rng.gen_biguint(keysize))
 }
 
-pub fn gen_coprime<'a>(x: &'a BigUint) -> BigUint {
+fn gen_coprime<'a>(x: &'a BigUint) -> BigUint {
     let mut y = BigUint::new(vec![65_537]);
     loop {
         // TODO: possible to avoid cloning x and y here?
@@ -58,7 +48,7 @@ pub fn gen_coprime<'a>(x: &'a BigUint) -> BigUint {
 ///
 /// Modified from: https://github.com/simon-andrews/rust-modinverse
 /// See also: https://en.wikipedia.org/wiki/Modular_multiplicative_inverse
-pub fn mod_inverse(a: &BigUint, m: &BigUint) -> Option<BigUint> {
+fn mod_inverse(a: &BigUint, m: &BigUint) -> Option<BigUint> {
     let (a_, m_) = (a.to_bigint().unwrap(), m.to_bigint().unwrap());
     let (g, x, _) = egcd(a_, m_.clone());
     if g.is_one() {
@@ -76,7 +66,7 @@ pub fn mod_inverse(a: &BigUint, m: &BigUint) -> Option<BigUint> {
 /// denominator of *a* and *b* (Bézout coefficients).
 ///
 /// See: https://en.wikipedia.org/wiki/Extended_Euclidean_algorithm
-pub fn egcd(a: BigInt, b: BigInt) -> (BigInt, BigInt, BigInt) {
+fn egcd(a: BigInt, b: BigInt) -> (BigInt, BigInt, BigInt) {
     if a.is_zero() {
         (b, BigInt::zero(), BigInt::one())
     } else {
@@ -84,6 +74,26 @@ pub fn egcd(a: BigInt, b: BigInt) -> (BigInt, BigInt, BigInt) {
         (g, y - ((b / a) * x.clone()), x.clone())
     }
 }
+
+pub fn gen_keypair(keysize: usize) -> (PublicKey, SecretKey) {
+    let (p,q) = gen_distinct_primes(keysize);
+    let lambda_n = lcm(&p - BigUint::one(), &q - BigUint::one());
+    let e = gen_coprime(&lambda_n);
+    let d = mod_inverse(&e, &lambda_n).unwrap();
+    (
+        PublicKey { n: &p * &q, e },
+        SecretKey { n: &p * &q, d, lambda_n }
+    )
+}
+
+pub fn encrypt(m: &BigUint, PublicKey{ e, n }: &PublicKey) -> BigUint {
+    m.modpow(&e, &n)
+}
+
+pub fn decrypt(c: &BigUint, SecretKey{ d, n, .. }: &SecretKey) -> BigUint {
+    c.modpow(&d, &n)
+}
+
 
 /// encodes a byte array as an integer
 /// as specified in RFC 8017's OS2IP encoding:
@@ -105,9 +115,17 @@ mod tests {
 
     #[test]
     fn generating_keypair(){
-        let (PublicKey{ e, n: n1 }, PrivateKey{ d, n: n2, lambda_n }) = gen_keypair(32);
+        let (PublicKey{ e, n: n1 }, SecretKey{ d, n: n2, lambda_n }) = gen_keypair(32);
         assert_eq!(n1, n2);
         assert_eq!((e * d) % lambda_n, BigUint::one());
+    }
+
+    #[test]
+    fn encrypting_and_decrypting(){
+        let (pk, sk) = gen_keypair(32);
+        let m = BigUint::new(vec![2]);
+        let c = encrypt(&m, &pk);
+        assert_eq!(m, decrypt(&c, &sk));
     }
 
     #[test]
