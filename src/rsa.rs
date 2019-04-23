@@ -1,7 +1,10 @@
+// extern crate num;
 extern crate num_bigint_dig as bigint;
 extern crate primal;
 extern crate rand;
 
+use num::integer::gcd;
+use num::traits::One;
 use bigint::{BigUint, RandBigInt};
 use bigint::prime;
 use rand::rngs::{OsRng};
@@ -14,6 +17,18 @@ pub fn gen_distinct_primes(keysize: usize) -> (BigUint, BigUint){
 
 fn gen_prime<T: CryptoRng + RandBigInt>(mut rng: T, keysize: usize) -> BigUint {
     prime::next_prime(&rng.gen_biguint(keysize))
+}
+
+pub fn gen_coprime<'a>(x: &'a BigUint) -> BigUint {
+    let mut y = BigUint::new(vec![17]);
+    loop {
+        // TODO: how to avoid cloning here?
+        if gcd(x.clone(),y.clone()).is_one() {
+            break y
+        } else {
+            y = prime::next_prime(&y);
+        }
+    }
 }
 
 /// encodes a byte array as an integer
@@ -45,6 +60,15 @@ mod tests {
         assert_ne!(p1, q1);
         assert_ne!(p2, q2);
     }
+
+    #[test]
+    fn generating_coprime(){
+        let int = OsRng::new().unwrap().gen_biguint(32);
+        let coprime = gen_coprime(&int);
+        assert_eq!(gcd(int, coprime), One::one());
+    }
+
+
 
     #[test]
     fn encoding_byte_array_as_int() {
