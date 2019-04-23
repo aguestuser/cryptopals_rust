@@ -20,6 +20,37 @@ pub struct SecretKey {
     lambda_n: BigUint,
 }
 
+/*******************
+ * PUBLIC FUNCTIONS
+ *******************/
+
+pub fn gen_keypair(keysize: usize) -> (PublicKey, SecretKey) {
+    let (p,q) = gen_distinct_primes(keysize);
+    let lambda_n = lcm(&p - BigUint::one(), &q - BigUint::one());
+    let e = gen_coprime(&lambda_n);
+    let d = mod_inverse(&e, &lambda_n).unwrap();
+    (
+        PublicKey { n: &p * &q, e },
+        SecretKey { n: &p * &q, d, lambda_n }
+    )
+}
+
+pub fn encrypt(m: &[u8], PublicKey{ e, n }: &PublicKey) -> BigUint {
+    let m_int = encode(m);
+    println!("m_int in: {}", m_int);
+    m_int.modpow(&e, &n)
+}
+
+pub fn decrypt<'a>(c: &BigUint, SecretKey{ d, n, .. }: &SecretKey) -> Vec<u8> {
+    let m_int = c.modpow(&d, &n);
+    println!("m_int out: {}", m_int);
+    decode(m_int)
+}
+
+/*******************
+ * HELPER FUNCTIONS
+ *******************/
+
 
 fn gen_distinct_primes(keysize: usize) -> (BigUint, BigUint){
     let mut rng = OsRng::new().expect("Failed to build RNG");
@@ -75,37 +106,31 @@ fn egcd(a: BigInt, b: BigInt) -> (BigInt, BigInt, BigInt) {
     }
 }
 
-pub fn gen_keypair(keysize: usize) -> (PublicKey, SecretKey) {
-    let (p,q) = gen_distinct_primes(keysize);
-    let lambda_n = lcm(&p - BigUint::one(), &q - BigUint::one());
-    let e = gen_coprime(&lambda_n);
-    let d = mod_inverse(&e, &lambda_n).unwrap();
-    (
-        PublicKey { n: &p * &q, e },
-        SecretKey { n: &p * &q, d, lambda_n }
-    )
+/// Encodes a byte array as an integer, with appropriate padding and hasing,
+/// according to EME-OAEP encoding specified in:
+/// https://tools.ietf.org/html/rfc8017#section-7.1
+fn encode(m: &[u8]) -> BigUint {
+    // TODO: add padding, hashing etc
+    encode_os2ip(m)
 }
 
-pub fn encrypt(m: &BigUint, PublicKey{ e, n }: &PublicKey) -> BigUint {
-    m.modpow(&e, &n)
-}
-
-pub fn decrypt(c: &BigUint, SecretKey{ d, n, .. }: &SecretKey) -> BigUint {
-    c.modpow(&d, &n)
-}
-
-
-/// encodes a byte array as an integer
-/// as specified in RFC 8017's OS2IP encoding:
-/// https://tools.ietf.org/html/rfc8017#section-4.2
-pub fn encode_os2ip(bs: &[u8]) -> BigUint {
-    BigUint::from_radix_be(bs, 256).unwrap()
-}
-
-/// decodes a byte array from an integer
-/// as specified in RFC 8017's I2OSP encoding:
+/// Encodes a byte array as an integer as specified in RFC 8017's OS2IP encoding:
 /// https://tools.ietf.org/html/rfc8017#section-4.1
-pub fn decode_i2osp(int: BigUint) -> Vec<u8> {
+fn encode_os2ip(bytes: &[u8]) -> BigUint {
+    BigUint::from_radix_be(bytes, 256).unwrap()
+}
+
+/// Decodes a byte array as an integer, with appropriate padding and hasing,
+/// according to EME-OAEP encoding specified in:
+/// https://tools.ietf.org/html/rfc8017#section-7.1
+fn decode(int: BigUint) -> Vec<u8> {
+    // TODO: reverse padding, hashing etc
+    decode_i2osp(int)
+}
+
+/// Decodes a byte array from an integer as specified in RFC 8017's I2OSP encoding:
+/// https://tools.ietf.org/html/rfc8017#section-4.1
+fn decode_i2osp(int: BigUint) -> Vec<u8> {
     int.to_bytes_be()
 }
 
@@ -123,9 +148,11 @@ mod tests {
     #[test]
     fn encrypting_and_decrypting(){
         let (pk, sk) = gen_keypair(32);
-        let m = BigUint::new(vec![2]);
-        let c = encrypt(&m, &pk);
-        assert_eq!(m, decrypt(&c, &sk));
+        // TODO: won't work for longer messages... why??
+        let m = b"hiya";
+        let c = encrypt(m, &pk);
+        let m_ = &decrypt(&c, &sk)[..];
+        assert_eq!(m, m_);
     }
 
     #[test]
@@ -145,6 +172,12 @@ mod tests {
         let int = OsRng::new().unwrap().gen_biguint(32);
         let coprime = gen_coprime(&int);
         assert_eq!(gcd(int, coprime), One::one());
+    }
+
+    #[test]
+    fn encoding_and_decoding(){
+        let m = b"hello world i am here!";
+        assert_eq!(m, &decode(encode(m))[..]);
     }
 
     #[test]
