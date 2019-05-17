@@ -4,16 +4,17 @@ extern crate lazy_static;
 pub mod characters;
 pub mod encoding;
 pub mod rsa;
-pub mod xor_cypher;
 pub mod xor_attack;
+pub mod xor_attack_repeating;
+pub mod xor_cypher;
 
 #[cfg(test)]
 mod test_set_1 {
-    use std::path::{Path};
-    use super::xor_cypher;
     use super::encoding;
     use super::xor_attack;
+    use super::xor_cypher;
     use encoding::{Base64, Hex};
+    use std::path::Path;
 
     #[test]
     fn challenge_1() {
@@ -82,7 +83,7 @@ mod test_set_1 {
          **/
 
         let cyphertext = encoding::hex2bytes(&Hex(String::from(
-            "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736"
+            "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736",
         )));
         assert_eq!(
             xor_attack::brute_force_xor_cypher(&cyphertext),
@@ -92,12 +93,11 @@ mod test_set_1 {
 
     #[test]
     fn challenge_4() {
-
         /***
          * One of the 60-character strings in this file [./data/detect_single_byte_xor.txt] has been encrypted by single-character XOR.
          * Find it.
          **/
-        
+
         let path = Path::new("data/detect_single_byte_xor.txt");
         let cyphertext = xor_attack::detect_xor_encryption_from_file(&path);
         assert_eq!(
@@ -107,28 +107,29 @@ mod test_set_1 {
     }
 
     #[test]
-    fn challenge_5(){
+    fn challenge_5() {
         /***
          * Implement repeating-key XOR
-         * 
+         *
          * Here is the opening stanza of an important work of the English language:
-         * 
+         *
          * Burning 'em, if you ain't quick and nimble
          * I go crazy when I hear a cymbal
-         * 
+         *
          * Encrypt it, under the key "ICE", using repeating-key XOR.
-         * 
+         *
          * In repeating-key XOR, you'll sequentially apply each byte of the key; the first byte of plaintext will be XOR'd against I, the next C, the next E, then I again for the 4th byte, and so on.
-         * 
+         *
          * It should come out to:
-         * 
+         *
          * 0b3637272a2b2e63622c2e69692a23693a2a3c6324202d623d63343c2a26226324272765272
          * a282b2f20430a652e2c652a3124333a653e2b2027630c692b20283165286326302e27282f
-         * 
+         *
          * Encrypt a bunch of stuff using your repeating-key XOR function. Encrypt your mail. Encrypt your password file. Your .sig file. Get a feel for it. I promise, we aren't wasting your time with this.
          **/
 
-        let cleartext = b"Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal".to_vec();
+        let cleartext =
+            b"Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal".to_vec();
         let key = b"ICE".to_vec();
         let expected_cyphertext = Hex(String::from("0b3637272a2b2e63622c2e69692a23693a2a3c6324202d623d63343c2a26226324272765272a282b2f20430a652e2c652a3124333a653e2b2027630c692b20283165286326302e27282f"));
 
@@ -136,12 +137,11 @@ mod test_set_1 {
             xor_cypher::repeating_key_encrypt(&cleartext, &key),
             encoding::hex2bytes(&expected_cyphertext)
         );
-        
     }
 
     #[test]
-    fn challenge_6(){
-       /************************************
+    fn challenge_6() {
+        /************************************
         Break repeating-key XOR
         [...]
 

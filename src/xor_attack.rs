@@ -1,13 +1,12 @@
+use crate::characters::{CHARACTER_BYTES, FREQS_BY_CHAR, SUMMED_SQUARED_FREQUENCIES};
+use crate::encoding;
+use crate::xor_cypher;
+use encoding::Hex;
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
-use std::path::{Path};
-use crate::characters::{CHARACTER_BYTES, FREQS_BY_CHAR, SUMMED_SQUARED_FREQUENCIES};
-use crate::encoding;
-use encoding::{Hex};
-use crate::xor_cypher;
-
+use std::path::Path;
 
 /********************
  * BRUTE FORCE XOR
@@ -111,7 +110,8 @@ pub fn detect_xor_encryption(messages: Vec<Vec<u8>>) -> Vec<u8> {
                 _ => (curr_guess, curr_max),
             },
         )
-        .0.to_vec()
+        .0
+        .to_vec()
 }
 
 /// count the number of byte values (ints between 0 and 255) not present in an input byte array
@@ -161,7 +161,7 @@ mod xor_attack_tests {
                 .as_bytes()
                 .to_vec()
         };
-    }    
+    }
 
     #[test]
     fn counting_missing_bytes() {
@@ -177,7 +177,8 @@ mod xor_attack_tests {
     #[test]
     fn test_brute_force_xor_cypher() {
         let cleartext = String::from("hello there world how are you.");
-        let cyphertext = xor_cypher::single_byte_encrypt(&cleartext.as_bytes().to_vec(), &('a' as u8));
+        let cyphertext =
+            xor_cypher::single_byte_encrypt(&cleartext.as_bytes().to_vec(), &('a' as u8));
         assert_eq!(brute_force_xor_cypher(&cyphertext), cleartext);
     }
 
@@ -238,7 +239,9 @@ mod xor_attack_tests {
         let path = Path::new("data/single_byte_xor_small_sample.txt");
         assert_eq!(
             detect_xor_encryption_from_file(&path),
-            encoding::hex2bytes(&Hex("7b5a4215415d544115415d5015455447414c155c46155f4058455c5b523f".to_string())),
+            encoding::hex2bytes(&Hex(
+                "7b5a4215415d544115415d5015455447414c155c46155f4058455c5b523f".to_string()
+            )),
         )
     }
 }

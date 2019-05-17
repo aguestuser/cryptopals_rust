@@ -13,18 +13,16 @@ pub fn repeating_key_encrypt(bv1: &Vec<u8>, bv2: &Vec<u8>) -> Vec<u8> {
         .collect::<Vec<_>>()
 }
 
-
 pub fn xor_hex(h1: Hex, h2: Hex) -> Result<Hex, FromHexError> {
     // assert hex strings of equal length
     let (bv1, bv2) = (hex::decode(h1.0)?, hex::decode(h2.0)?);
-    let bv3 = xor(bv1, bv2);
+    let bv3 = xor(&bv1, &bv2);
     Ok(Hex(hex::encode(bv3)))
 }
 
-
-pub fn xor(bv1: Vec<u8>, bv2: Vec<u8>) -> Vec<u8> {
-    bv1.iter()
-        .zip(bv2.iter())
+pub fn xor(bs1: &[u8], bs2: &[u8]) -> Vec<u8> {
+    bs1.iter()
+        .zip(bs2.iter())
         .map(|(&a, &b)| a ^ b)
         .collect::<Vec<_>>()
 }
@@ -51,8 +49,8 @@ mod xor_cypher_tests {
     fn test_xor() {
         assert_eq!(
             xor(
-                vec![0b1100_0000, 0b0000_0000],
-                vec![0b0110_0000, 0b0000_0000]
+                &[0b1100_0000, 0b0000_0000],
+                &[0b0110_0000, 0b0000_0000]
             ),
             vec![0b1010_0000, 0b0000_0000]
         );
@@ -68,7 +66,8 @@ mod xor_cypher_tests {
 
     #[test]
     fn encrypting_with_multiple_byte_key() {
-        let cleartext = b"Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal".to_vec();
+        let cleartext =
+            b"Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal".to_vec();
         let key = b"ICE".to_vec();
         let expected_cyphertext = Hex(String::from("0b3637272a2b2e63622c2e69692a23693a2a3c6324202d623d63343c2a26226324272765272a282b2f20430a652e2c652a3124333a653e2b2027630c692b20283165286326302e27282f"));
 
