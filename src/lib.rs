@@ -8,7 +8,7 @@ pub mod xor_cypher;
 pub mod xor_cypher_attack;
 
 #[cfg(test)]
-mod set_1 {
+mod test_set_1 {
     use std::path::{Path};
     use super::xor_cypher;
     use super::encoding;
@@ -98,7 +98,7 @@ mod set_1 {
          * Find it.
          **/
         
-        let path = Path::new("src/data/detect_single_byte_xor.txt");
+        let path = Path::new("data/detect_single_byte_xor.txt");
         let cyphertext = xor_cypher_attack::detect_xor_encryption_from_file(&path);
         assert_eq!(
             xor_cypher_attack::brute_force_xor_cypher(&cyphertext),

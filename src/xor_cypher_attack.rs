@@ -235,7 +235,7 @@ mod xor_cypher_attack_tests {
 
     #[test]
     fn detecting_xor_encryption_from_file() {
-        let path = Path::new("src/data/single_byte_xor_small_sample.txt");
+        let path = Path::new("data/single_byte_xor_small_sample.txt");
         assert_eq!(
             detect_xor_encryption_from_file(&path),
             encoding::hex2bytes(&Hex("7b5a4215415d544115415d5015455447414c155c46155f4058455c5b523f".to_string())),
