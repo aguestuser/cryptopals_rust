@@ -9,9 +9,12 @@ pub mod xor_cypher_attack;
 
 #[cfg(test)]
 mod set_1 {
-    use super::encoding::{hex_to_base64, Base64, Hex};
+    use std::path::{Path};
     use super::xor_cypher::xor_hex;
-    use super::xor_cypher_attack::brute_force_xor_cypher;
+    use super::encoding;
+    use encoding::{Base64, Hex};
+    use super::xor_cypher_attack;
+
 
     #[test]
     fn challenge_1() {
@@ -30,14 +33,14 @@ mod set_1 {
          */
 
         assert_eq!(
-        hex_to_base64(Hex(String::from("49276d206b696c6c696e6720796f757220627261696e206c696b65206120706f69736f6e6f7573206d757368726f6f6d"))),
+        encoding::hex_to_base64(Hex(String::from("49276d206b696c6c696e6720796f757220627261696e206c696b65206120706f69736f6e6f7573206d757368726f6f6d"))),
         Ok(Base64(String::from("SSdtIGtpbGxpbmcgeW91ciBicmFpbiBsaWtlIGEgcG9pc29ub3VzIG11c2hyb29t")))
         );
     }
 
     #[test]
     fn challenge_2() {
-        /*
+        /************
          * Fixed XOR
          *
          * Write a function that takes two equal-length buffers and produces their XOR combination.
@@ -53,7 +56,7 @@ mod set_1 {
          *
          * `746865206b696420646f6e277420706c6179
          *
-         */
+         **/
 
         assert_eq!(
             xor_hex(
@@ -66,7 +69,7 @@ mod set_1 {
 
     #[test]
     fn challenge_3() {
-        /*
+        /***
          * Single-byte XOR cipher
          *
          * The hex encoded string:
@@ -77,14 +80,30 @@ mod set_1 {
          * You can do this by hand. But don't: write code to do it for you.
          * How? Devise some method for "scoring" a piece of English plaintext.
          * Character frequency is a good metric. Evaluate each output and choose the one with the best score.
-         */
+         **/
 
+        let cyphertext = encoding::hex2bytes(&Hex(String::from(
+            "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736"
+        )));
         assert_eq!(
-            brute_force_xor_cypher(Hex(String::from(
-                "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736"
-            ))),
+            xor_cypher_attack::brute_force_xor_cypher(&cyphertext),
             String::from("Cooking MC's like a pound of bacon")
         )
     }
 
+    #[test]
+    fn challenge_4() {
+
+        /***
+         * One of the 60-character strings in this file [./data/detect_single_byte_xor.txt] has been encrypted by single-character XOR.
+         * Find it.
+         **/
+        
+        let path = Path::new("src/data/detect_single_byte_xor.txt");
+        let cyphertext = xor_cypher_attack::detect_xor_encryption_from_file(&path);
+        assert_eq!(
+            xor_cypher_attack::brute_force_xor_cypher(&cyphertext),
+            String::from("Now that the party is jumping\n"),
+        )
+    }
 }
