@@ -2,11 +2,11 @@ use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
-use std::path::{Path, PathBuf};
+use std::path::{Path};
 use crate::characters::{CHARACTER_BYTES, FREQS_BY_CHAR, SUMMED_SQUARED_FREQUENCIES};
 use crate::encoding;
 use encoding::{Hex};
-use crate::xor_cypher::xor_cycle;
+use crate::xor_cypher;
 
 
 /********************
@@ -43,7 +43,7 @@ fn find_min_score_xor(cyphertext_bytes: &Vec<u8>) -> Vec<u8> {
 }
 
 fn evaluate_guess(cyphertext_bytes: &Vec<u8>, key: &u8) -> (Vec<u8>, f64) {
-    let bytes = xor_cycle(cyphertext_bytes, key);
+    let bytes = xor_cypher::single_byte_encrypt(cyphertext_bytes, key);
     let score = score(&bytes);
     (bytes, score)
 }
@@ -121,7 +121,7 @@ fn count_missing_bytes(message: &[u8]) -> usize {
 }
 
 #[cfg(test)]
-mod tests {
+mod xor_cypher_attack_tests {
     use super::*;
     use crate::encoding;
     use std::iter;
@@ -177,7 +177,7 @@ mod tests {
     #[test]
     fn test_brute_force_xor_cypher() {
         let cleartext = String::from("hello there world how are you.");
-        let cyphertext = xor_cycle(&cleartext.as_bytes().to_vec(), &('a' as u8));
+        let cyphertext = xor_cypher::single_byte_encrypt(&cleartext.as_bytes().to_vec(), &('a' as u8));
         assert_eq!(brute_force_xor_cypher(&cyphertext), cleartext);
     }
 
@@ -241,6 +241,4 @@ mod tests {
             encoding::hex2bytes(&Hex("7b5a4215415d544115415d5015455447414c155c46155f4058455c5b523f".to_string())),
         )
     }
-
-
 }

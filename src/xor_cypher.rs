@@ -2,6 +2,18 @@ extern crate hex;
 use crate::encoding::Hex;
 use hex::FromHexError;
 
+pub fn single_byte_encrypt(bv1: &Vec<u8>, b2: &u8) -> Vec<u8> {
+    repeating_key_encrypt(bv1, &vec![*b2])
+}
+
+pub fn repeating_key_encrypt(bv1: &Vec<u8>, bv2: &Vec<u8>) -> Vec<u8> {
+    bv1.iter()
+        .zip(bv2.iter().cycle())
+        .map(|(&a, &b)| a ^ b)
+        .collect::<Vec<_>>()
+}
+
+
 pub fn xor_hex(h1: Hex, h2: Hex) -> Result<Hex, FromHexError> {
     // assert hex strings of equal length
     let (bv1, bv2) = (hex::decode(h1.0)?, hex::decode(h2.0)?);
@@ -9,12 +21,6 @@ pub fn xor_hex(h1: Hex, h2: Hex) -> Result<Hex, FromHexError> {
     Ok(Hex(hex::encode(bv3)))
 }
 
-pub fn xor_cycle(bv1: &Vec<u8>, b2: &u8) -> Vec<u8> {
-    bv1.iter()
-        .zip(vec![b2].iter().cycle())
-        .map(|(&a, &b)| a ^ b)
-        .collect::<Vec<_>>()
-}
 
 pub fn xor(bv1: Vec<u8>, bv2: Vec<u8>) -> Vec<u8> {
     bv1.iter()
@@ -24,9 +30,10 @@ pub fn xor(bv1: Vec<u8>, bv2: Vec<u8>) -> Vec<u8> {
 }
 
 #[cfg(test)]
-mod tests {
+mod xor_cypher_tests {
     use super::*;
-    use crate::encoding::Hex;
+    use crate::encoding;
+    use encoding::Hex;
 
     #[test]
 
@@ -50,11 +57,25 @@ mod tests {
             vec![0b1010_0000, 0b0000_0000]
         );
     }
+
     #[test]
-    fn test_xor_cycle() {
+    fn encrypting_with_single_byte_key() {
         assert_eq!(
-            xor_cycle(&vec![0b1100_0000, 0b0000_0000], &0b0110_0000),
+            single_byte_encrypt(&vec![0b1100_0000, 0b0000_0000], &0b0110_0000),
             vec![0b1010_0000, 0b0110_0000]
         );
     }
+
+    #[test]
+    fn encrypting_with_multiple_byte_key() {
+        let cleartext = b"Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal".to_vec();
+        let key = b"ICE".to_vec();
+        let expected_cyphertext = Hex(String::from("0b3637272a2b2e63622c2e69692a23693a2a3c6324202d623d63343c2a26226324272765272a282b2f20430a652e2c652a3124333a653e2b2027630c692b20283165286326302e27282f"));
+
+        assert_eq!(
+            repeating_key_encrypt(&cleartext, &key),
+            encoding::hex2bytes(&expected_cyphertext)
+        );
+    }
+
 }
