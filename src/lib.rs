@@ -5,14 +5,14 @@ pub mod characters;
 pub mod encoding;
 pub mod rsa;
 pub mod xor_cypher;
-pub mod xor_cypher_attack;
+pub mod xor_attack;
 
 #[cfg(test)]
 mod test_set_1 {
     use std::path::{Path};
     use super::xor_cypher;
     use super::encoding;
-    use super::xor_cypher_attack;
+    use super::xor_attack;
     use encoding::{Base64, Hex};
 
     #[test]
@@ -85,7 +85,7 @@ mod test_set_1 {
             "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736"
         )));
         assert_eq!(
-            xor_cypher_attack::brute_force_xor_cypher(&cyphertext),
+            xor_attack::brute_force_xor_cypher(&cyphertext),
             String::from("Cooking MC's like a pound of bacon")
         )
     }
@@ -99,9 +99,9 @@ mod test_set_1 {
          **/
         
         let path = Path::new("data/detect_single_byte_xor.txt");
-        let cyphertext = xor_cypher_attack::detect_xor_encryption_from_file(&path);
+        let cyphertext = xor_attack::detect_xor_encryption_from_file(&path);
         assert_eq!(
-            xor_cypher_attack::brute_force_xor_cypher(&cyphertext),
+            xor_attack::brute_force_xor_cypher(&cyphertext),
             String::from("Now that the party is jumping\n"),
         )
     }

@@ -121,7 +121,7 @@ fn count_missing_bytes(message: &[u8]) -> usize {
 }
 
 #[cfg(test)]
-mod xor_cypher_attack_tests {
+mod xor_attack_tests {
     use super::*;
     use crate::encoding;
     use std::iter;
