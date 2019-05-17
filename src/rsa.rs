@@ -1,23 +1,20 @@
-extern crate num_bigint_dig as bigint;
-extern crate primal;
-extern crate rand;
-
-use bigint::{BigInt, BigUint, RandBigInt, ToBigInt};
 use bigint::prime;
-use num::integer::{lcm, gcd};
-use num::traits::{One,Zero};
-use rand::rngs::{OsRng};
-use rand::{CryptoRng};
+use bigint::{BigInt, BigUint, RandBigInt, ToBigInt};
+use num::integer::{gcd, lcm};
+use num::traits::{One, Zero};
+use num_bigint_dig as bigint;
+use rand::rngs::OsRng;
+use rand::CryptoRng;
 
 pub struct PublicKey {
-    pub e:    BigUint,
-    pub n:    BigUint,
+    pub e: BigUint,
+    pub n: BigUint,
 }
 
 pub struct SecretKey {
-    pub d:    BigUint,
-    pub n:    BigUint,
-    lambda_n: BigUint,
+    pub d: BigUint,
+    pub n: BigUint,
+    pub lambda_n: BigUint,
 }
 
 /*******************
@@ -25,23 +22,27 @@ pub struct SecretKey {
  *******************/
 
 pub fn gen_keypair(keysize: usize) -> (PublicKey, SecretKey) {
-    let (p,q) = gen_distinct_primes(keysize);
+    let (p, q) = gen_distinct_primes(keysize);
     let lambda_n = lcm(&p - BigUint::one(), &q - BigUint::one());
     let e = gen_coprime(&lambda_n);
     let d = mod_inverse(&e, &lambda_n).unwrap();
     (
         PublicKey { n: &p * &q, e },
-        SecretKey { n: &p * &q, d, lambda_n }
+        SecretKey {
+            n: &p * &q,
+            d,
+            lambda_n,
+        },
     )
 }
 
-pub fn encrypt(m: &[u8], PublicKey{ e, n }: &PublicKey) -> BigUint {
+pub fn encrypt(m: &[u8], PublicKey { e, n }: &PublicKey) -> BigUint {
     let m_int = encode(m);
     println!("m_int in: {}", m_int);
     m_int.modpow(&e, &n)
 }
 
-pub fn decrypt<'a>(c: &BigUint, SecretKey{ d, n, .. }: &SecretKey) -> Vec<u8> {
+pub fn decrypt<'a>(c: &BigUint, SecretKey { d, n, .. }: &SecretKey) -> Vec<u8> {
     let m_int = c.modpow(&d, &n);
     println!("m_int out: {}", m_int);
     decode(m_int)
@@ -51,8 +52,7 @@ pub fn decrypt<'a>(c: &BigUint, SecretKey{ d, n, .. }: &SecretKey) -> Vec<u8> {
  * HELPER FUNCTIONS
  *******************/
 
-
-fn gen_distinct_primes(keysize: usize) -> (BigUint, BigUint){
+fn gen_distinct_primes(keysize: usize) -> (BigUint, BigUint) {
     let mut rng = OsRng::new().expect("Failed to build RNG");
     (gen_prime(&mut rng, keysize), gen_prime(&mut rng, keysize))
 }
@@ -65,14 +65,13 @@ fn gen_coprime<'a>(x: &'a BigUint) -> BigUint {
     let mut y = BigUint::new(vec![65_537]);
     loop {
         // TODO: possible to avoid cloning x and y here?
-        if gcd(x.clone(),y.clone()).is_one() {
-            break y
+        if gcd(x.clone(), y.clone()).is_one() {
+            break y;
         } else {
             y = y + BigUint::one();
         }
     }
 }
-
 
 /// Calculates the modular multiplicative inverse *x* of an integer *a*,
 /// such that *ax* ≡ 1 (mod *m*), using the extended euclidian algorithm method.
@@ -83,11 +82,10 @@ fn mod_inverse(a: &BigUint, m: &BigUint) -> Option<BigUint> {
     let (a_, m_) = (a.to_bigint().unwrap(), m.to_bigint().unwrap());
     let (g, x, _) = egcd(a_, m_.clone());
     if g.is_one() {
-       Some((x % m_.clone() + m_.clone()) % m_.clone()).and_then(|bi| bi.to_biguint())
+        Some((x % m_.clone() + m_.clone()) % m_.clone()).and_then(|bi| bi.to_biguint())
     } else {
-       None
+        None
     }
-
 }
 
 /// Implements the extended euclidian algorithm.
@@ -139,28 +137,44 @@ mod tests {
     use super::*;
 
     #[test]
-    fn generating_keypair(){
-        let (PublicKey{ e, n: n1 }, SecretKey{ d, n: n2, lambda_n }) = gen_keypair(32);
+    fn generating_keypair() {
+        let (PublicKey { e, n: n1 }, SecretKey { d, n: n2, lambda_n }) = gen_keypair(32);
         assert_eq!(n1, n2);
         assert_eq!((e * d) % lambda_n, BigUint::one());
     }
 
     #[test]
-    fn encrypting_and_decrypting(){
-        let (pk, sk) = gen_keypair(32);
+    fn encrypting_and_decrypting() {
+        let (pk, sk) = gen_keypair(16);
+
         // TODO: won't work for longer messages... why??
-        let m = b"hiya";
+        // let m = b"hello world i am here!";
+        let m = b"hi";
         let c = encrypt(m, &pk);
         let m_ = &decrypt(&c, &sk)[..];
+
+        println!("--------------");
+        println!("e: {}", pk.e);
+        println!("d: {}", sk.d);
+        println!("n: {}", sk.n);
+        println!("lambda_n {}", sk.lambda_n);
+        println!("--------------");
+        println!("m1: {:?}", m);
+        println!("c: {:?}", c);
+        println!("m2: {:?}", m_);
+        println!("--------------");
+
         assert_eq!(m, m_);
     }
 
     #[test]
-    fn generating_distinct_primes(){
+    fn generating_distinct_primes() {
         let (p1, q1) = gen_distinct_primes(32);
         let (p2, q2) = gen_distinct_primes(32);
 
-        vec![&p1,&q1,&p2,&q2].iter().for_each(|n| assert!(prime::probably_prime_lucas(n)));
+        vec![&p1, &q1, &p2, &q2]
+            .iter()
+            .for_each(|n| assert!(prime::probably_prime_lucas(n)));
         assert_ne!(p1, p2);
         assert_ne!(q1, q2);
         assert_ne!(p1, q1);
@@ -168,15 +182,15 @@ mod tests {
     }
 
     #[test]
-    fn generating_coprime(){
+    fn generating_coprime() {
         let int = OsRng::new().unwrap().gen_biguint(32);
         let coprime = gen_coprime(&int);
         assert_eq!(gcd(int, coprime), One::one());
     }
 
     #[test]
-    fn encoding_and_decoding(){
-        let m = b"hello world i am here!";
+    fn encoding_and_decoding() {
+        let m = b"hello world i am here";
         assert_eq!(m, &decode(encode(m))[..]);
     }
 
