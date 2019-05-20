@@ -6,9 +6,10 @@ pub fn single_byte_encrypt(bv1: &Vec<u8>, b2: &u8) -> Vec<u8> {
     repeating_key_encrypt(bv1, &vec![*b2])
 }
 
-pub fn repeating_key_encrypt(bv1: &Vec<u8>, bv2: &Vec<u8>) -> Vec<u8> {
-    bv1.iter()
-        .zip(bv2.iter().cycle())
+pub fn repeating_key_encrypt(cleartext: &Vec<u8>, key: &Vec<u8>) -> Vec<u8> {
+    cleartext
+        .iter()
+        .zip(key.iter().cycle())
         .map(|(&a, &b)| a ^ b)
         .collect::<Vec<_>>()
 }
@@ -48,10 +49,7 @@ mod xor_cypher_tests {
     #[test]
     fn test_xor() {
         assert_eq!(
-            xor(
-                &[0b1100_0000, 0b0000_0000],
-                &[0b0110_0000, 0b0000_0000]
-            ),
+            xor(&[0b1100_0000, 0b0000_0000], &[0b0110_0000, 0b0000_0000]),
             vec![0b1010_0000, 0b0000_0000]
         );
     }
