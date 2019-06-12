@@ -2,9 +2,10 @@ use crate::xor_cypher;
 use rayon::iter::{
     IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator, ParallelIterator,
 };
-
 const NUM_KEYSIZE_GUESSES: usize = 4;
 const NUM_HAMMING_DIST_SAMPLES: usize = 20;
+const MIN_KEYSIZE: usize = 2;
+const MAX_KEYSIZE: usize = 40;
 
 #[derive(Clone, PartialEq, Debug)]
 struct KeysizeDistance {
@@ -16,17 +17,17 @@ struct KeysizeDistance {
 /// guesses size of key used to encrypt text with repeating key xor by:
 ///
 /// (1) enumerating a number of possible key sizes and for each one...
-/// (2) measuring the hamming distance (number of differing bits)
+/// (2) measuring the edit distance (aka: "hamming distance", ie: number of differing bits)
 ///     between adjacent byte slices of this length in the cyphertext
-/// (3) picking the keysize that produced the lowest hamming distance
+/// (3) picking the keysizes that produced the 4 lowest edit distance
 ///     (ie: the blocks of bytes that are the most similar to one another)
 ///
-/// TODO: figure out why this is a good heuristic
+///     TODO: figure out why edit distance is a good heuristic
 ///
 fn guess_keysizes(cyphertext: &[u8]) -> Vec<usize> {
     // TODO: consider picking `num_hamming_dist_samples`
     // dynamically as a function of cyphertext length
-    let mut keysize_distances = (2usize..40usize)
+    let mut keysize_distances = (MIN_KEYSIZE..MAX_KEYSIZE)
         .into_par_iter()
         .map(|keysize| calc_hamming_dist_for_keysize(cyphertext, keysize))
         .collect::<Vec<KeysizeDistance>>();
@@ -36,13 +37,18 @@ fn guess_keysizes(cyphertext: &[u8]) -> Vec<usize> {
         .collect()
 }
 
-fn partition_into_blocks(cyphertext: &[u8], num_blocks: usize, block_size: usize) -> Vec<&[u8]> {
-    // TODO: pad or truncate cyphertext to closest multiple of `block_size`
-    // to avoid trying to index into it past its end
-    (0..num_blocks)
+fn transpose_many(vecs_of_blocks: Vec<Vec<&[u8]>>) -> Vec<Vec<Vec<u8>>> {
+    vecs_of_blocks.into_par_iter().map(transpose).collect()
+}
+
+/// transpose N `cyphertext_blocks` with length `keysize` into `keysize` blocks of length N
+/// such that the ith block of the output consists of the ith element of every input block
+fn transpose(blocks: Vec<&[u8]>) -> Vec<Vec<u8>> {
+    // TODO: provide strong guarantee earlier that blocks will always have same length
+    (0..blocks[0].len())
         .into_par_iter()
-        .map(|n| &cyphertext[(n * block_size)..((n + 1) * block_size)])
-        .collect::<Vec<&[u8]>>()
+        .map(|idx| blocks.par_iter().map(|block| block[idx]).collect())
+        .collect()
 }
 
 fn calc_hamming_dist_for_keysize(cyphertext: &[u8], keysize: usize) -> KeysizeDistance {
@@ -52,6 +58,17 @@ fn calc_hamming_dist_for_keysize(cyphertext: &[u8], keysize: usize) -> KeysizeDi
         keysize,
         dist: dist as f32 / keysize as f32, // normalize dist measurements based on keysize size
     }
+}
+
+/// partitions a byte array into `num_blocks` blocks of `block_size` size
+/// padding
+fn partition_into_blocks(cyphertext: &[u8], num_blocks: usize, block_size: usize) -> Vec<&[u8]> {
+    // TODO: pad or truncate cyphertext to closest multiple of `block_size`
+    // to avoid trying to index into it past its end
+    (0..num_blocks)
+        .into_par_iter()
+        .map(|n| &cyphertext[(n * block_size)..((n + 1) * block_size)])
+        .collect()
 }
 
 fn calc_avg_hamming_distance(bss: &[&[u8]]) -> f32 {
@@ -132,6 +149,40 @@ mod xor_attack_repeating_tests {
     }
 
     #[test]
+    fn transposing_cyphertext_blocks_for_a_keysize() {
+        assert_eq!(
+            transpose(vec![&[1, 2, 3, 4], &[5, 6, 7, 8], &[9, 10, 11, 12]]),
+            vec![
+                vec![1, 5, 9],
+                vec![2, 6, 10],
+                vec![3, 7, 11],
+                vec![4, 8, 12]
+            ]
+        )
+    }
+
+    #[test]
+    fn transposing_cyphertext_blocks_for_many_keysizes() {
+        assert_eq!(
+            transpose_many(vec![
+                vec![&[1, 2], &[3, 4], &[5, 6], &[7, 8], &[9, 10], &[11, 12]],
+                vec![&[1, 2, 3], &[4, 5, 6], &[7, 8, 9], &[10, 11, 12]],
+                vec![&[1, 2, 3, 4], &[5, 6, 7, 8], &[9, 10, 11, 12]]
+            ]),
+            vec![
+                vec![vec![1, 3, 5, 7, 9, 11], vec![2, 4, 6, 8, 10, 12]],
+                vec![vec![1, 4, 7, 10], vec![2, 5, 8, 11], vec![3, 6, 9, 12],],
+                vec![
+                    vec![1, 5, 9],
+                    vec![2, 6, 10],
+                    vec![3, 7, 11],
+                    vec![4, 8, 12],
+                ],
+            ]
+        )
+    }
+
+    #[test]
     fn calculating_avg_hamming_distance() {
         let txts = &[
             &b"foobarbaz"[..],
@@ -161,7 +212,7 @@ mod xor_attack_repeating_tests {
         // TODO: make this test true: will prevent panicks resulting from
         // attempting to index into cyphertext byte slice past its end
         // assert_eq!(
-        //     partition_into_blocks(&cyphertext, 4, 2),
+        //     partition_into_blocks(&cyphertext, 2,),
         //     vec![&[100, 101, 102, 103]],
         // );
     }
