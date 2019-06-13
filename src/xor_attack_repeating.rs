@@ -63,12 +63,20 @@ fn calc_hamming_dist_for_keysize(cyphertext: &[u8], keysize: usize) -> KeysizeDi
 /// partitions a byte array into `num_blocks` blocks of `block_size` size
 /// padding
 fn partition_into_blocks(cyphertext: &[u8], num_blocks: usize, block_size: usize) -> Vec<&[u8]> {
-    // TODO: pad or truncate cyphertext to closest multiple of `block_size`
-    // to avoid trying to index into it past its end
+    let num_blocks = truncate_num_blocks(cyphertext, num_blocks, block_size);
     (0..num_blocks)
         .into_par_iter()
         .map(|n| &cyphertext[(n * block_size)..((n + 1) * block_size)])
         .collect()
+}
+
+/// truncate num blocks to closest multiple of `block_size` (to avoid indexing past end of cyphertext)
+fn truncate_num_blocks(cyphertext: &[u8], num_blocks: usize, block_size: usize) -> usize {
+    let blocks_len = num_blocks * block_size;
+    match blocks_len < cyphertext.len() {
+        true => num_blocks,
+        false => num_blocks - (blocks_len % cyphertext.len()),
+    }
 }
 
 fn calc_avg_hamming_distance(bss: &[&[u8]]) -> f32 {
@@ -209,12 +217,22 @@ mod xor_attack_repeating_tests {
             partition_into_blocks(&cyphertext, 2, 2),
             vec![&[100, 101], &[102, 103]],
         );
-        // TODO: make this test true: will prevent panicks resulting from
-        // attempting to index into cyphertext byte slice past its end
-        // assert_eq!(
-        //     partition_into_blocks(&cyphertext, 2,),
-        //     vec![&[100, 101, 102, 103]],
-        // );
+    }
+
+    #[test]
+    fn partitioning_cyphertext_into_blocks_when_truncation_necessary() {
+        let cyphertext = [1, 2, 3, 4, 5, 6, 7];
+        assert_eq!(
+            partition_into_blocks(&cyphertext, 4, 2),
+            vec![&[1, 2], &[3, 4], &[5, 6]],
+        );
+    }
+
+    #[test]
+    fn calculating_number_of_blocks_to_partition_into() {
+        assert_eq!(truncate_num_blocks(&[0; 7], 4, 2), 3);
+        assert_eq!(truncate_num_blocks(&[0; 8], 4, 2), 4);
+        assert_eq!(truncate_num_blocks(&[0; 8], 2, 2), 2);
     }
 
     #[test]
