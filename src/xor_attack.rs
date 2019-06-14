@@ -1,16 +1,18 @@
 use crate::characters::{CHARACTER_BYTES, FREQS_BY_CHAR, SUMMED_SQUARED_FREQUENCIES};
 use crate::encoding;
+use crate::scoring::ScoredCleartext;
 use crate::xor_cypher;
 use encoding::Hex;
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::path::Path;
 
-/********************
- * BRUTE FORCE XOR
- ********************/
+/**********************************
+ * BRUTE FORCE DECRYPT XOR CYPHER
+ **********************************/
 
 /// brute force single byte xor encryption by guessing every possible byte
 /// as a potential key, and keeping the guess whose character frequency
@@ -18,33 +20,27 @@ use std::path::Path;
 /// observed in English text
 pub fn brute_force_xor_cypher_from_hex(cyphertext: &Hex) -> String {
     let cyphertext_bytes = encoding::hex2bytes(&cyphertext);
-    let cleartext_bytes = find_min_score_xor(&cyphertext_bytes);
+    let cleartext_bytes = find_min_score_xor(&cyphertext_bytes).cleartext;
     String::from_utf8_lossy(&cleartext_bytes).to_string()
 }
 
-pub fn brute_force_xor_cypher(cyphertext_bytes: &Vec<u8>) -> String {
-    let cleartext_bytes = find_min_score_xor(cyphertext_bytes);
+pub fn brute_force_decrypt(cyphertext_bytes: &Vec<u8>) -> String {
+    let cleartext_bytes = find_min_score_xor(cyphertext_bytes).cleartext;
     String::from_utf8_lossy(&cleartext_bytes).to_string()
 }
 
-fn find_min_score_xor(cyphertext_bytes: &Vec<u8>) -> Vec<u8> {
+pub fn find_min_score_xor(cyphertext_bytes: &Vec<u8>) -> ScoredCleartext {
     CHARACTER_BYTES
-        .iter()
-        .fold((Vec::<u8>::new(), std::f64::MAX), |curr_guess, key| {
-            let new_guess = evaluate_guess(cyphertext_bytes, key);
-            if new_guess.1 < curr_guess.1 {
-                new_guess
-            } else {
-                curr_guess
-            }
-        })
-        .0
+        .par_iter()
+        .map(|key| evaluate_guess(cyphertext_bytes, key))
+        .min()
+        .expect("attempted to find min of empty iterator")
 }
 
-fn evaluate_guess(cyphertext_bytes: &Vec<u8>, key: &u8) -> (Vec<u8>, f64) {
-    let bytes = xor_cypher::single_byte_encrypt(cyphertext_bytes, key);
-    let score = score(&bytes);
-    (bytes, score)
+fn evaluate_guess(cyphertext_bytes: &Vec<u8>, key: &u8) -> ScoredCleartext {
+    let cleartext = xor_cypher::single_byte_encrypt(cyphertext_bytes, key);
+    let score = score(&cleartext);
+    ScoredCleartext { cleartext, score }
 }
 
 /// measure the deviation of the observed distribution of character bytes
@@ -163,44 +159,37 @@ mod xor_attack_tests {
         };
     }
 
-    #[test]
-    fn counting_missing_bytes() {
-        let bs1: &[u8] = &(0u8..=255u8).into_iter().collect::<Vec<u8>>()[..];
-        let bs2: &[u8] = &(0u8..=127u8).into_iter().collect::<Vec<u8>>()[..];
-        let bs3: &[u8] = &(0u8..=0u8).into_iter().collect::<Vec<u8>>()[..];
-
-        assert_eq!(count_missing_bytes(bs1), 0);
-        assert_eq!(count_missing_bytes(bs2), 128);
-        assert_eq!(count_missing_bytes(bs3), 255);
-    }
+    /*************************************
+     * BRUTE FORCE DECRYPTING XOR CYPHER
+     *************************************/
 
     #[test]
-    fn test_brute_force_xor_cypher() {
+    fn brute_force_decrpyting_xor_cypher() {
         let cleartext = String::from("hello there world how are you.");
         let cyphertext =
             xor_cypher::single_byte_encrypt(&cleartext.as_bytes().to_vec(), &('a' as u8));
-        assert_eq!(brute_force_xor_cypher(&cyphertext), cleartext);
+        assert_eq!(brute_force_decrypt(&cyphertext), cleartext);
     }
 
     #[test]
-    fn test_score() {
+    fn scoring() {
         assert!((score(&ENGLISH_LIKE_DISTR) - 0.016118592).abs() < 0.000000001)
     }
 
     #[test]
-    fn test_score_comparisons() {
+    fn comparing_scores() {
         let good_score = score(&ENGLISH_LIKE_DISTR);
         let bad_score = score(&NON_ENGLISH_LIKE_DISTR);
         assert!(good_score < bad_score)
     }
 
     #[test]
-    fn test_sum_frequency_products() {
+    fn summing_frequency_products() {
         assert!((sum_frequency_products(&ENGLISH_LIKE_DISTR) - 0.052664608).abs() < 0.000000001);
     }
 
     #[test]
-    fn test_calc_frequencies() {
+    fn calculating_frequencies() {
         let freqs = calc_frequencies(&ENGLISH_LIKE_DISTR);
         assert_eq!(freqs.get(&('a' as u8)), Some(&0.16));
         assert_eq!(freqs.get(&('e' as u8)), Some(&0.14));
@@ -214,6 +203,10 @@ mod xor_attack_tests {
         assert_eq!(freqs.get(&('t' as u8)), Some(&0.06));
         assert_eq!(freqs.get(&('u' as u8)), Some(&0.04));
     }
+
+    /*************************************
+     * DETECTING XOR ENCRYPTION
+     *************************************/
 
     #[test]
     fn detecting_xor_encryption() {
@@ -243,5 +236,16 @@ mod xor_attack_tests {
                 "7b5a4215415d544115415d5015455447414c155c46155f4058455c5b523f".to_string()
             )),
         )
+    }
+
+    #[test]
+    fn counting_missing_bytes() {
+        let bs1: &[u8] = &(0u8..=255u8).into_iter().collect::<Vec<u8>>()[..];
+        let bs2: &[u8] = &(0u8..=127u8).into_iter().collect::<Vec<u8>>()[..];
+        let bs3: &[u8] = &(0u8..=0u8).into_iter().collect::<Vec<u8>>()[..];
+
+        assert_eq!(count_missing_bytes(bs1), 0);
+        assert_eq!(count_missing_bytes(bs2), 128);
+        assert_eq!(count_missing_bytes(bs3), 255);
     }
 }

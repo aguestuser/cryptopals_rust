@@ -4,6 +4,7 @@ extern crate lazy_static;
 pub mod characters;
 pub mod encoding;
 pub mod rsa;
+pub mod scoring;
 pub mod xor_attack;
 pub mod xor_attack_repeating;
 pub mod xor_cypher;
@@ -86,7 +87,7 @@ mod test_set_1 {
             "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736",
         )));
         assert_eq!(
-            xor_attack::brute_force_xor_cypher(&cyphertext),
+            xor_attack::brute_force_decrypt(&cyphertext),
             String::from("Cooking MC's like a pound of bacon")
         )
     }
@@ -101,7 +102,7 @@ mod test_set_1 {
         let path = Path::new("data/detect_single_byte_xor.txt");
         let cyphertext = xor_attack::detect_xor_encryption_from_file(&path);
         assert_eq!(
-            xor_attack::brute_force_xor_cypher(&cyphertext),
+            xor_attack::brute_force_decrypt(&cyphertext),
             String::from("Now that the party is jumping\n"),
         )
     }
