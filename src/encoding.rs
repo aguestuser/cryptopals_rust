@@ -12,6 +12,10 @@ pub fn hex_to_base64(h: Hex) -> Result<Base64, hex::FromHexError> {
     Ok(Base64(base64::encode(&hex_bytes)))
 }
 
+pub fn base64_to_bytes(b: Base64) -> Result<Vec<u8>, base64::DecodeError> {
+    base64::decode(&b.0)
+}
+
 pub fn str2bytes<'a>(s: &'a String) -> &'a [u8] {
     s.as_bytes()
 }

@@ -4,8 +4,8 @@ use crate::xor_cypher;
 use rayon::iter::{
     IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator, ParallelIterator,
 };
-const NUM_KEYSIZE_GUESSES: usize = 4;
-const NUM_HAMMING_DIST_SAMPLES: usize = 20;
+const NUM_KEYSIZE_GUESSES: usize = 2;
+const NUM_HAMMING_DIST_SAMPLES: usize = 30;
 const MIN_KEYSIZE: usize = 2;
 const MAX_KEYSIZE: usize = 40;
 
@@ -49,10 +49,6 @@ fn minscore_transposed_cleartext_blocks(cyphertext: &[u8], keysizes: Vec<usize>)
         .into_blocks()
 }
 
-//hmmm.... think we want something like `ScoredCleartexts` that has a mean score that we can compare
-// to take the min between the transposed cleartext blocks for each keysize guess
-// that's for tomorrow!!!!
-// then we need to re-assemble everything!
 fn find_min_score_xor(transposed_cyphertext: Vec<Vec<u8>>) -> Vec<ScoredCleartext> {
     transposed_cyphertext
         .par_iter()
@@ -163,7 +159,7 @@ mod xor_attack_repeating_tests {
     use crate::encoding;
 
     lazy_static! {
-        static ref KEY: Vec<u8> = b"foobarbazlalala".to_vec();
+        static ref KEY: Vec<u8> = b"foobarbazquxdoremi".to_vec();
         static ref CLEARTEXT: Vec<u8> =
             b"A screaming comes across the sky. It has happened before, \
               but there is nothing to compare it to now.\
@@ -188,7 +184,7 @@ mod xor_attack_repeating_tests {
               stacked about among the rest of the things to be carried out to salvation.\
               Only the nearer faces are visible at all, and at that only as half-silvered \
               images in a view finder, green-stained VIP faces remembered behind bulletproof \
-              windows speeding through the city"
+              windows speeding through the c"//ity...
                 .to_vec();
     }
 
